@@ -1,12 +1,29 @@
 ﻿using System;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
 using System.Web.Http;
 using System.Web.Http.Controllers;
 using System.Web.Http.Dispatcher;
+using System.Web.Http.Filters;
+using Xunit.Sdk;
 
 namespace WebApi.AuthenticationFilter.Basic.Tests
 {
+
+    public class AssertExceptionFilter : ExceptionFilterAttribute
+    {
+        public override void OnException(HttpActionExecutedContext context)
+        {
+            if (context.Exception is AssertException)
+            {
+                context.Response = new HttpResponseMessage(HttpStatusCode.ServiceUnavailable);
+                context.Response.RequestMessage = context.Request;
+                context.Response.RequestMessage.Properties.Add("AssertException",context.Exception);
+            }
+        }
+    }
+
     public static class Tester
     {
         public async static Task Run(
@@ -17,6 +34,7 @@ namespace WebApi.AuthenticationFilter.Basic.Tests
         {
             var config = new HttpConfiguration();
             config.Routes.MapHttpRoute("Default", "{controller}/{id}", new { controller = "test", action = "get", id = RouteParameter.Optional });
+            config.Filters.Add(new AssertExceptionFilter());
             var service = new TestControllerService(config, assertInAction);
             config.Services.Replace(typeof(IHttpControllerActivator), service);
             withConfiguration(config);
@@ -24,6 +42,11 @@ namespace WebApi.AuthenticationFilter.Basic.Tests
             var server = new HttpServer(config);
             var client = new HttpClient(server);
             var resp = await client.SendAsync(withRequest());
+            object assertionException;
+            if(resp.RequestMessage.Properties.TryGetValue("AssertException", out assertionException))
+            {
+                ExceptionUtility.RethrowWithNoStackTraceLoss(assertionException as AssertException);
+            }
             assertResponse(resp);
         }
     }
