@@ -1,4 +1,4 @@
 WebApi.AuthenticationFilter.Basic
 =================================
 
-An experimental basic authentication filter for Web API
+An experimental Basic HTTP Authentication filter for Web API VNext, mostly for learning purposes.

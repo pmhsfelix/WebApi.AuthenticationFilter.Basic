@@ -1,0 +1,111 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Security.Claims;
+using System.Security.Principal;
+using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Web.Http;
+using System.Web.Http.Controllers;
+using System.Web.Http.Dispatcher;
+using Xunit;
+
+namespace WebApi.AuthenticationFilter.Basic.Tests
+{
+   
+
+    public class BasicAuthenticationFilterTests
+    {
+        private Func<string, string, Task<IPrincipal>> _validator = (username, password) =>
+        {
+            var princ = username == password ? new ClaimsPrincipal(new GenericIdentity(username)) : null;
+            return Task.FromResult(princ as IPrincipal);
+        };
+
+        [Fact]
+        public async Task Correctly_authenticated_request_has_a_valid_User()
+        {
+            await Tester.Run(
+                withConfiguration: config =>
+                {
+                    config.Filters.Add(new BasicAuthenticationFilter("myrealm", _validator));
+                },
+                withRequest: () =>
+                {
+                    var req = new HttpRequestMessage(HttpMethod.Get, "http://example.net");
+                    req.Headers.Authorization = new AuthenticationHeaderValue("basic",
+                        Convert.ToBase64String(
+                        Encoding.ASCII.GetBytes("Alice:Alice")));
+                    return req;
+                },
+                assertInAction: controller =>
+                {
+                    Assert.Equal("Alice", controller.User.Identity.Name);
+                    return new HttpResponseMessage();
+                },
+                assertResponse: response =>
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                }
+           );
+        }
+
+        [Fact]
+        public async Task Incorrectly_authenticated_request_returns_a_401()
+        {
+            await Tester.Run(
+                withConfiguration: config =>
+                {
+                    config.Filters.Add(new BasicAuthenticationFilter("myrealm", _validator));
+                },
+                withRequest: () =>
+                {
+                    var req = new HttpRequestMessage(HttpMethod.Get, "http://example.net");
+                    req.Headers.Authorization = new AuthenticationHeaderValue("basic",
+                        Convert.ToBase64String(
+                        Encoding.ASCII.GetBytes("Alice:NotAlice")));
+                    return req;
+                },
+                assertInAction: controller =>
+                {
+                    Assert.False(true, "should not reach controller");
+                    return new HttpResponseMessage();
+                },
+                assertResponse: response =>
+                {
+                    Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+                }
+           );
+        }
+
+        [Fact]
+        public async Task Non_authenticated_request_reaches_controller_with_an_unauthenticated_user()
+        {
+            await Tester.Run(
+                withConfiguration: config =>
+                {
+                    config.Filters.Add(new BasicAuthenticationFilter("myrealm", _validator));
+                },
+                withRequest: () =>
+                {
+                    return new HttpRequestMessage(HttpMethod.Get, "http://example.net");
+                },
+                assertInAction: controller =>
+                {
+                    Assert.False(controller.User.Identity.IsAuthenticated);
+                    return new HttpResponseMessage(HttpStatusCode.Unauthorized);
+                },
+                assertResponse:response =>
+                {
+                    Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+                    Assert.Equal("Basic", response.Headers.WwwAuthenticate.First().Scheme);
+                    Assert.Equal("realm=myrealm", response.Headers.WwwAuthenticate.First().Parameter);
+                }
+           );
+        }
+    }
+}
