@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Security.Principal;
@@ -46,7 +47,7 @@ namespace WebApi.AuthenticationFilter.Basic
             context.Result = new ActionResultDelegate(context.Result, async (ct, next) =>
             {
                 var res = await next.ExecuteAsync(ct);
-                if (res.Headers.WwwAuthenticate != null)
+                if(res.StatusCode == HttpStatusCode.Unauthorized)
                 {
                     res.Headers.WwwAuthenticate.Add(new AuthenticationHeaderValue("Basic", _realm));
                 }

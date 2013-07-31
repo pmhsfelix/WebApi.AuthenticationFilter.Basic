@@ -55,6 +55,35 @@ namespace WebApi.AuthenticationFilter.Basic.Tests
         }
 
         [Fact]
+        public async Task Correctly_authenticated_request_does_not_return_a_challenge()
+        {
+            await Tester.Run(
+                withConfiguration: config =>
+                {
+                    config.Filters.Add(new BasicAuthenticationFilter("myrealm", _validator));
+                },
+                withRequest: () =>
+                {
+                    var req = new HttpRequestMessage(HttpMethod.Get, "http://example.net");
+                    req.Headers.Authorization = new AuthenticationHeaderValue("basic",
+                        Convert.ToBase64String(
+                        Encoding.ASCII.GetBytes("Alice:Alice")));
+                    return req;
+                },
+                assertInAction: controller =>
+                {
+                    Assert.Equal("Alice", controller.User.Identity.Name);
+                    return new HttpResponseMessage();
+                },
+                assertResponse: response =>
+                {
+                    Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                    Assert.Equal(0, response.Headers.WwwAuthenticate.Count);
+                }
+           );
+        }
+
+        [Fact]
         public async Task Incorrectly_authenticated_request_returns_a_401()
         {
             await Tester.Run(
