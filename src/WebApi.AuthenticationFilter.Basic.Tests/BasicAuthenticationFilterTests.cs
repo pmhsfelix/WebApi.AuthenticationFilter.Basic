@@ -84,7 +84,7 @@ namespace WebApi.AuthenticationFilter.Basic.Tests
         }
 
         [Fact]
-        public async Task Incorrectly_authenticated_request_returns_a_401()
+        public async Task Incorrectly_authenticated_request_returns_a_401_with_only_one_challenge()
         {
             await Tester.Run(
                 withConfiguration: config =>
@@ -107,10 +107,12 @@ namespace WebApi.AuthenticationFilter.Basic.Tests
                 assertResponse: response =>
                 {
                     Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+                    Assert.Equal(1, response.Headers.WwwAuthenticate.Count);
                 }
            );
         }
 
+       
         [Fact]
         public async Task Non_authenticated_request_reaches_controller_with_an_unauthenticated_user()
         {

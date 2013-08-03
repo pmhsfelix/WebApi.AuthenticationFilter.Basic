@@ -35,8 +35,8 @@ namespace WebApi.AuthenticationFilter.Basic
                 }
                 else
                 {
-                    context.ErrorResult = new UnauthorizedResult(
-                        new AuthenticationHeaderValue[]{new AuthenticationHeaderValue("basic")}, 
+                    // challenges will be added by the ChallengeAsync
+                    context.ErrorResult = new UnauthorizedResult( new AuthenticationHeaderValue[0], 
                         context.Request );
                 }
             }
