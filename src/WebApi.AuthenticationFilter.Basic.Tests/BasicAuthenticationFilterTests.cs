@@ -138,5 +138,33 @@ namespace WebApi.AuthenticationFilter.Basic.Tests
                 }
            );
         }
+
+        [Fact]
+        public async Task Supports_UTF8_usernames_and_password()
+        {
+            await Tester.Run(
+                 withConfiguration: config =>
+                 {
+                     config.Filters.Add(new BasicAuthenticationFilter("myrealm", _validator));
+                 },
+                 withRequest: () =>
+                 {
+                     var req = new HttpRequestMessage(HttpMethod.Get, "http://example.net");
+                     req.Headers.Authorization = new AuthenticationHeaderValue("basic",
+                         Convert.ToBase64String(
+                         Encoding.UTF8.GetBytes("Alíç€:Alíç€")));
+                     return req;
+                 },
+                 assertInAction: controller =>
+                 {
+                     Assert.Equal("Alíç€", controller.User.Identity.Name);
+                     return new HttpResponseMessage();
+                 },
+                 assertResponse: response =>
+                 {
+                     Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+                 }
+            );
+        }
     }
 }

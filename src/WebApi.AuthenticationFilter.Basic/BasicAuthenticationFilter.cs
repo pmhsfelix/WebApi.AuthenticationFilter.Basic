@@ -67,7 +67,7 @@ namespace WebApi.AuthenticationFilter.Basic
             string pair;
             try
             {
-                pair = Encoding.ASCII.GetString(Convert.FromBase64String(creds));
+                pair = Encoding.UTF8.GetString(Convert.FromBase64String(creds));
             }
             catch (FormatException)
             {
